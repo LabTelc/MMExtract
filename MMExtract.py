@@ -21,8 +21,7 @@ class MMExtract(QMainWindow, UI_MainWindow):
     def __init__(self):
         super(MMExtract, self).__init__()
         self.setupUi(self)
-        self.icon = QIcon(icon_path)
-        self.setWindowIcon(self.icon)
+        self.setWindowIcon(QIcon(icon_path))
         self.id_gen = id_generator()
         self.images = {}
 
@@ -60,12 +59,16 @@ class MMExtract(QMainWindow, UI_MainWindow):
                 getattr(self, f"dsb_c_upper_{letter}").valueChanged.connect(
                     lambda value, l=letter: getattr(self, f"s_c_{l}").setMaximum(value))
                 getattr(self, f"dsb_c_{letter}").valueChanged.connect(self._handle_command)
+                getattr(self, f"dsb_c_{letter}").valueChanged.connect(
+                    lambda value, l=letter: self._handle_dsb_c(value, l))
 
         self.le_command.return_pressed.connect(self._handle_command)
         self.last_command = ""
         self.a_bp.triggered.connect(self.batch_processing)
 
     def open_files(self, filepaths, letter):
+        if letter == "r":
+            return
         for filepath in filepaths:
             valid = False
             while not valid:
@@ -74,7 +77,6 @@ class MMExtract(QMainWindow, UI_MainWindow):
                 if valid is None or valid:
                     break
                 dialog = FileInfoDialog(self, self.parameters)
-                dialog.setIcon(self.icon)
                 if dialog.exec_() == QDialog.Accepted:
                     self.parameters.width = dialog.result["width"]
                     self.parameters.height = dialog.result["height"]
@@ -108,7 +110,8 @@ class MMExtract(QMainWindow, UI_MainWindow):
         item = QStandardItem()
         filename = os.path.basename(filepath)
         getattr(self, f"cb_files_{letter}").addItem(filename, userData=im_id)
-        getattr(self, f"cb_files_{letter}").setItemData(getattr(self, f"cb_files_{letter}").count() - 1, filepath, Qt.ToolTipRole)
+        getattr(self, f"cb_files_{letter}").setItemData(getattr(self, f"cb_files_{letter}").count() - 1, filepath,
+                                                        Qt.ToolTipRole)
 
     def _handle_selection_changed(self, limits):
         for l in ["a", "b", "r"]:
@@ -220,6 +223,19 @@ class MMExtract(QMainWindow, UI_MainWindow):
                 filename = f"{dir_path}/{filename}.tiff"
                 self.working_queue.put((filename, arr, None))
             self.worker_thread.wake()
+
+    def _handle_dsb_c(self, value, letter):
+        s_c = getattr(self, f"s_c_{letter}")
+        min_, max_ = s_c.minimum(), s_c.maximum()
+        if min_ <= value <= max_:
+            s_c.blockSignals(True)
+            getattr(self, f"s_c_{letter}").setFloatValue(value)
+            s_c.blockSignals(False)
+        else:
+            if value < min_:
+                getattr(self, f"dsb_c_{letter}").setValue(min_)
+            else:
+                getattr(self, f"dsb_c_{letter}").setValue(max_)
 
     def batch_processing(self):
         dir_path = QFileDialog.getExistingDirectory(self, "Open a directory...", self.parameters.last_dir)

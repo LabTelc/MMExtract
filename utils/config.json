@@ -1,8 +1,8 @@
 {
     "dtype": "uint16",
     "header": 0,
-    "width": 4096,
-    "height": 4096,
+    "width": 15,
+    "height": 15,
     "cmap": "gray",
     "last_dir": "D:/NotreDame/200_degrees"
 }

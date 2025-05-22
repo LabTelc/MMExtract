@@ -29,6 +29,7 @@ class VisPyCanvas(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         self.setLayout(layout)
+        self.setAcceptDrops(True)
         # Events
         self.canvas.events.key_press.connect(self._on_key_press)
         self.canvas.events.mouse_move.connect(self._on_mouse_move)
@@ -105,6 +106,27 @@ class VisPyCanvas(QWidget):
         :param limits: tuple (xmin, xmax), (ymin, ymax)
         """
         self.view.camera.set_range(x=limits[0], y=limits[1])
+
+    def dragEnterEvent(self, event, **kwargs):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dragMoveEvent(self, event, **kwargs):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event, **kwargs):
+        if event.mimeData().hasUrls():
+            urls = event.mimeData().urls()
+            file_paths = [url.toLocalFile() for url in urls]
+            self.window().open_files(file_paths, self.objectName()[-1])
+            event.accept()
+        else:
+            event.ignore()
 
     def _canvas2image_coord(self, pos):
         tr = self.canvas.scene.node_transform(self.image)
