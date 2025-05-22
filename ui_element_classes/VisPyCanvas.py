@@ -1,6 +1,6 @@
 import numpy as np
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QMenu
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 
 from vispy.scene import SceneCanvas
@@ -11,6 +11,7 @@ from utils import CustomPanZoomCamera
 
 class VisPyCanvas(QWidget):
     selection_changed = pyqtSignal(tuple, name='image updated')
+    save_image = pyqtSignal(bool, name='save image')
 
     def __init__(self, parent=None):
         """
@@ -162,6 +163,8 @@ class VisPyCanvas(QWidget):
         if event.button == 1 and not self.doubleclick_timer.isActive():
             self.doubleclick_timer.start()
             self._drag_start_delayed = event.pos
+        elif event.button == 2:
+            self._show_context_menu(event)
 
     def _on_mouse_release(self, event):
         if self._drag_start is None:
@@ -179,3 +182,9 @@ class VisPyCanvas(QWidget):
 
         self._drag_start = None
         self.rect.visible = False
+
+    def _show_context_menu(self, event):
+        menu = QMenu(self.canvas.native)
+        menu.addAction("Save image", lambda: self.save_image.emit(False))
+        menu.addAction("Save all images", lambda: self.save_image.emit(True))
+        menu.exec_(self.canvas.native.mapToGlobal(event.native.pos()))

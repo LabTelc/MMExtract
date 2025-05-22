@@ -60,3 +60,18 @@ def id_generator():
 
 def mask_bad_values(array):
     return array[~np.isnan(array) & ~np.isinf(array)]
+
+
+def to16bit_uint(array):
+    """
+    Convert a float array to 16-bit unsigned integer.
+    :param array: Input array
+    :return: Converted array
+    """
+    arr_min = np.min(mask_bad_values(array))
+    arr_max = np.max(mask_bad_values(array))
+    if arr_max > arr_min:
+        norm_array = (array - arr_min) / (arr_max - arr_min)
+    else:
+        norm_array = np.zeros_like(array)
+    return (norm_array * 65535).astype(np.uint16)

@@ -1,4 +1,5 @@
 import sys
+import os
 import numpy as np
 from queue import Queue
 
@@ -27,10 +28,10 @@ class MMExtract(QMainWindow, UI_MainWindow):
 
         self.parameters = Parameters()
         self.parameters.from_config("utils/config.json")
-        self.loading_queue = Queue()
-        self.loading_thread = ImageLoaderThread(self, image_queue=self.loading_queue)
-        self.loading_thread.start()
-        self.loading_thread.image_loaded.connect(self._image_loader_handler)
+        self.working_queue = Queue()
+        self.worker_thread = WorkerThread(self, image_queue=self.working_queue)
+        self.worker_thread.start()
+        self.worker_thread.work_done.connect(self._worker_handler)
 
         for letter in ["a", "b", "r"]:
             getattr(self, f"cb_colormaps_{letter}").addItems(cmaps_list_small)
@@ -43,7 +44,8 @@ class MMExtract(QMainWindow, UI_MainWindow):
                 lambda value, l=letter: getattr(self, f"dsb_upper_{l}").setValue(value))
             getattr(self, f"cb_colormaps_{letter}").currentTextChanged.connect(
                 lambda value, l=letter: getattr(self, f"canvas_{l}").set_cmap(value))
-            getattr(self, f"canvas_{letter}").selection_changed.connect(self.handle_selection_changed)
+            getattr(self, f"canvas_{letter}").selection_changed.connect(self._handle_selection_changed)
+            getattr(self, f"canvas_{letter}").save_image.connect(self._save_image_handler)
             getattr(self, f"cb_files_{letter}").currentIndexChanged.connect(self._handle_file_changed)
             getattr(self, f"dsb_lower_{letter}").valueChanged.connect(
                 lambda value, l=letter: self._handle_dsb_limits(value, l, "lower"))
@@ -61,6 +63,7 @@ class MMExtract(QMainWindow, UI_MainWindow):
 
         self.le_command.return_pressed.connect(self._handle_command)
         self.last_command = ""
+        self.a_bp.triggered.connect(self.batch_processing)
 
     def open_files(self, filepaths, letter):
         for filepath in filepaths:
@@ -80,11 +83,11 @@ class MMExtract(QMainWindow, UI_MainWindow):
                     valid = None
                     break
             if valid is None:
-                print(f"File \"{filepath}\" could not be loaded.")
+                self.log(f"File \"{filepath}\" could not be loaded.", "red")
             else:
-                self.loading_queue.put((filepath, self.parameters, letter))
+                self.working_queue.put((filepath, self.parameters, letter))
 
-        self.loading_thread.wake()
+        self.worker_thread.wake()
 
     def _open_files_dialog(self):
         letter = self.sender().objectName()[-1]
@@ -94,17 +97,17 @@ class MMExtract(QMainWindow, UI_MainWindow):
         self.parameters.last_dir = filenames[0][:filenames[0].rfind("/")]
         self.open_files(filenames, letter)
 
-    def _image_loader_handler(self, load):
+    def _worker_handler(self, load):
         arr, filepath, letter = load
         if arr is None:
-            print(f"File \"{filepath}\" could not be loaded.")
+            self.log(filepath)
             return
         im_id = next(self.id_gen)
         self.images[im_id] = arr
-
+        self.log(f"File \"{filepath}\" loaded successfully.")
         getattr(self, f"cb_files_{letter}").addItem(filepath, userData=im_id)
 
-    def handle_selection_changed(self, limits):
+    def _handle_selection_changed(self, limits):
         for l in ["a", "b", "r"]:
             getattr(self, f"canvas_{l}").set_camera_range(limits)
         for l in ["a", "b"]:
@@ -193,6 +196,34 @@ class MMExtract(QMainWindow, UI_MainWindow):
             self.log(f"Result is not an array\n{result}", color="red")
             return
 
+    def _save_image_handler(self, many):
+        letter = self.sender().objectName()[-1]
+        if not many:
+            filename, _ = QFileDialog.getSaveFileName(self, "Save image...", self.parameters.last_dir, "TIFF (*.tiff)")
+            id_ = getattr(self, f"cb_files_{letter}").currentData()
+            if not filename or id_ is None:
+                return
+            self.working_queue.put((filename, self.images[id_], None))
+            self.worker_thread.wake()
+        else:
+            dir_path = QFileDialog.getExistingDirectory(self, "Open a directory...", self.parameters.last_dir)
+            if not dir_path:
+                return
+            cb_files = getattr(self, f"cb_files_{letter}")
+            for i in range(cb_files.count()):
+                filename = os.path.basename(cb_files.itemText(i))
+                filename = filename if not '.' in filename else filename[:filename.rfind('.')]
+                arr = self.images[cb_files.itemData(i)]
+                filename = f"{dir_path}/{filename}.tiff"
+                self.working_queue.put((filename, arr, None))
+            self.worker_thread.wake()
+
+    def batch_processing(self):
+        dir_path = QFileDialog.getExistingDirectory(self, "Open a directory...", self.parameters.last_dir)
+        if not dir_path:
+            return
+        self.parameters.last_dir = dir_path
+
     def log(self, text, color="black"):
         self.te_log.setTextColor(QColor(color))
         self.te_log.append(text)
@@ -201,8 +232,8 @@ class MMExtract(QMainWindow, UI_MainWindow):
 
     def closeEvent(self, event):
         self.parameters.to_config("utils/config.json")
-        self.loading_thread.requestInterruption()
-        self.loading_thread.wake()
+        self.worker_thread.requestInterruption()
+        self.worker_thread.wake()
         event.accept()
 
 

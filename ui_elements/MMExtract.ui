@@ -671,8 +671,20 @@
      <height>21</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menu_tools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="a_bp"/>
+   </widget>
+   <addaction name="menu_tools"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="a_bp">
+   <property name="text">
+    <string>Batch Processing</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
