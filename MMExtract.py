@@ -5,7 +5,7 @@ from queue import Queue
 
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication, QFileDialog, QDialog
-from PyQt5.QtGui import QIcon, QTextCursor, QColor
+from PyQt5.QtGui import QIcon, QTextCursor, QColor, QStandardItem
 from PyQt5.uic import loadUiType
 
 from ui_element_classes.FileInfoDialog import FileInfoDialog
@@ -105,7 +105,10 @@ class MMExtract(QMainWindow, UI_MainWindow):
         im_id = next(self.id_gen)
         self.images[im_id] = arr
         self.log(f"File \"{filepath}\" loaded successfully.")
-        getattr(self, f"cb_files_{letter}").addItem(filepath, userData=im_id)
+        item = QStandardItem()
+        filename = os.path.basename(filepath)
+        getattr(self, f"cb_files_{letter}").addItem(filename, userData=im_id)
+        getattr(self, f"cb_files_{letter}").setItemData(getattr(self, f"cb_files_{letter}").count() - 1, filepath, Qt.ToolTipRole)
 
     def _handle_selection_changed(self, limits):
         for l in ["a", "b", "r"]:
