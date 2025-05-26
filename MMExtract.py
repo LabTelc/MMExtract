@@ -72,15 +72,16 @@ class MMExtract(QMainWindow, UI_MainWindow):
         for filepath in filepaths:
             valid = False
             while not valid:
-                self.parameters.width, self.parameters.height = guess_shape(filepath, self.parameters.dtype)
-                valid = validate_input(filepath, self.parameters)
-                if valid is None or valid:
-                    break
+                #self.parameters.width, self.parameters.height = guess_shape(filepath, self.parameters.dtype)
+                #valid = validate_input(filepath, self.parameters)
+                #if valid is None or valid:
+                #    break
                 dialog = FileInfoDialog(self, self.parameters)
                 if dialog.exec_() == QDialog.Accepted:
                     self.parameters.width = dialog.result["width"]
                     self.parameters.height = dialog.result["height"]
                     self.parameters.dtype = dialog.result["dtype"]
+                    valid = True
                 else:
                     valid = None
                     break

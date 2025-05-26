@@ -1,0 +1,1 @@
+conda activate Vopex3 && python MMExtract.py

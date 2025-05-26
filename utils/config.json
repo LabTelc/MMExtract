@@ -1,8 +1,8 @@
 {
-    "dtype": "uint16",
+    "dtype": "float64",
     "header": 0,
-    "width": 15,
-    "height": 15,
+    "width": 4096,
+    "height": 4096,
     "cmap": "gray",
-    "last_dir": "D:/NotreDame/200_degrees"
+    "last_dir": "D:/Measurements/20240013_Nayyab_pigments/02_RAW_Projections/Fruits_painting/DE_firstExperiment"
 }
