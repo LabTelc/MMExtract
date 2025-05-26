@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>219</width>
-    <height>178</height>
+    <height>303</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Dialog</string>
   </property>
-  <layout class="QVBoxLayout" name="horizontalLayout">
+  <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
@@ -87,6 +87,27 @@
        </widget>
       </item>
      </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="cb_ud">
+     <property name="text">
+      <string>Flip Up - Down</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="cb_lr">
+     <property name="text">
+      <string>Flip Left - Right</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QCheckBox" name="cb_all">
+     <property name="text">
+      <string>Apply on queue</string>
+     </property>
     </widget>
    </item>
    <item>
