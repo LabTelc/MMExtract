@@ -47,7 +47,7 @@ class BatchDialog(QDialog, UI_BatchDialog):
                 item.setIcon(QIcon(file))
                 item.setData(Qt.ToolTipRole, file)
                 getattr(self, f"lw_{letter}").addItem(item)
-            getattr(self, f"gb_{letter}").setTitle(f"Image A ({getattr(self, f"lw_{letter}").count()} items)")
+            getattr(self, f"gb_{letter}").setTitle(f"Image A ({getattr(self, f'lw_{letter}').count()} items)")
 
     def _pick_output_directory(self):
         directory = QFileDialog.getExistingDirectory(self, "Select output directory",

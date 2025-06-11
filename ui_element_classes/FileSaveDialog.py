@@ -18,7 +18,7 @@ class FileSaveDialog(QDialog, Ui_FileSaveDialog):
     def accept(self):
         self.result = {
             "dtype": self.cb_dtype.currentText(),
-            "normalize": self.cb_normalize.checked()
+            "normalize": self.cb_normalize.isChecked()
         }
         super().accept()
 

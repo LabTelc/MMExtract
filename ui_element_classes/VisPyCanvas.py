@@ -212,7 +212,7 @@ class VisPyCanvas(QWidget):
     def _show_context_menu(self, event):
         menu = QMenu(self.canvas.native)
         menu.addAction("Save image (tiff)", lambda: self.save_image.emit(("tiff", False)))
-        menu.addAction("Save image (bin)", lambda: self.save_image.emit("bin", False))
+        menu.addAction("Save image (bin)", lambda: self.save_image.emit(("bin", False)))
         menu.addAction("Save all images (tiff)", lambda: self.save_image.emit(("tiff", True)))
         menu.addAction("Save all images (bin)", lambda: self.save_image.emit(("bin", True)))
         menu.exec_(self.canvas.native.mapToGlobal(event.native.pos()))
