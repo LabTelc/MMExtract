@@ -1,1 +1,2 @@
-conda activate Vopex3 && python MMExtract.py
+call conda activate Vopex3 
+start pythonw MMExtract.py
