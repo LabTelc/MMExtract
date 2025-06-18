@@ -1,6 +1,6 @@
 import numpy as np
 
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QMenu
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QMenu, QMainWindow
 from PyQt5.QtCore import Qt, pyqtSignal, QTimer
 
 from vispy.scene import SceneCanvas
@@ -11,16 +11,18 @@ from utils import CustomPanZoomCamera
 
 class VisPyCanvas(QWidget):
     selection_changed = pyqtSignal(tuple, name='image updated')
-    save_image = pyqtSignal(bool, name='save image')
+    save_image = pyqtSignal(tuple, name='save image')
+    open_window = pyqtSignal(name='open window')
+    closed_window = pyqtSignal(name='close window')
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, size=(800, 600)):
         """
         Wrapper for VisPy canvas for controlled usage in PyQt app
         :param parent: parent QWidget
         """
         super(VisPyCanvas, self).__init__(parent)
         # PyQt
-        self.canvas = SceneCanvas(parent=self, show=True, bgcolor="white")
+        self.canvas = SceneCanvas(parent=self, show=True, bgcolor="white", size=size)
         self.label = QLabel()
         self.label.setMaximumHeight(20)
         layout = QVBoxLayout(self)
@@ -68,7 +70,7 @@ class VisPyCanvas(QWidget):
             self.image.visible = True
         self.image_data = image
         self.image.set_data(self.image_data)
-        f = 150
+        f = 0
         self.selection_changed.emit(((0+f, self.image_data.shape[1]-f), (self.image_data.shape[0]-f, 0+f)))
         self.canvas.update()
 
@@ -108,19 +110,19 @@ class VisPyCanvas(QWidget):
         self.view.camera.set_range(x=limits[0], y=limits[1])
 
     def dragEnterEvent(self, event, **kwargs):
-        if event.mimeData().hasUrls():
+        if event.mimeData().hasUrls() and isinstance(self.window(), QMainWindow):
             event.accept()
         else:
             event.ignore()
 
     def dragMoveEvent(self, event, **kwargs):
-        if event.mimeData().hasUrls():
+        if event.mimeData().hasUrls() and isinstance(self.window(), QMainWindow):
             event.accept()
         else:
             event.ignore()
 
     def dropEvent(self, event, **kwargs):
-        if event.mimeData().hasUrls():
+        if event.mimeData().hasUrls() and isinstance(self.window(), QMainWindow):
             urls = event.mimeData().urls()
             file_paths = [url.toLocalFile() for url in urls]
             self.window().open_files(file_paths, self.objectName()[-1])
@@ -187,6 +189,8 @@ class VisPyCanvas(QWidget):
             self._drag_start_delayed = event.pos
         elif event.button == 2:
             self._show_context_menu(event)
+        elif event.button == 3:
+            self.open_window.emit()
 
     def _on_mouse_release(self, event):
         if self._drag_start is None:
@@ -207,6 +211,12 @@ class VisPyCanvas(QWidget):
 
     def _show_context_menu(self, event):
         menu = QMenu(self.canvas.native)
-        menu.addAction("Save image", lambda: self.save_image.emit(False))
-        menu.addAction("Save all images", lambda: self.save_image.emit(True))
+        menu.addAction("Save image (tiff)", lambda: self.save_image.emit(("tiff", False)))
+        menu.addAction("Save image (bin)", lambda: self.save_image.emit(("bin", False)))
+        menu.addAction("Save all images (tiff)", lambda: self.save_image.emit(("tiff", True)))
+        menu.addAction("Save all images (bin)", lambda: self.save_image.emit(("bin", True)))
         menu.exec_(self.canvas.native.mapToGlobal(event.native.pos()))
+
+    def closeEvent(self, event):
+        self.closed_window.emit()
+        event.accept()

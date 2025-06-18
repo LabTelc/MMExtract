@@ -1,8 +1,13 @@
 {
-    "dtype": "float64",
+    "dtype": "uint16",
     "header": 0,
     "width": 4096,
     "height": 4096,
     "cmap": "gray",
-    "last_dir": "D:/Measurements/20240013_Nayyab_pigments/02_RAW_Projections/Fruits_painting/DE_firstExperiment"
+    "last_dir": "E:/Measurements/20250002_Prsten/03_FFC_Projections/Prsten_220kV_50W_1200ms_2mmAl",
+    "flip_ud": true,
+    "flip_lr": false,
+    "apply_queue": true,
+    "ca": 1.0,
+    "cb": 1.0
 }

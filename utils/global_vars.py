@@ -4,9 +4,11 @@ import numpy as np
 from dataclasses import dataclass
 from .functions import mask_bad_values
 
-supportedDataTypes = ['int8', 'int16', 'int32', 'int64',
+supportedLoadDataTypes = ['int8', 'int16', 'int32', 'int64',
                       'uint8', 'uint16', 'uint32', 'uint64',
                       'float8', 'float16', 'float32', 'float64']
+
+supportedSaveDataTypes = ["uint16", "float32"]
 
 limits_list = ["min - max",
                "5 - 95",
@@ -37,19 +39,37 @@ class Parameters:
     height: int = 0
     cmap: str = 'gray'
     last_dir: str = "./"
+    flip_ud: bool = False
+    flip_lr: bool = False
+    apply_queue: bool = False
+    ca: float = 1.0
+    cb: float = 1.0
 
     def from_config(self, path):
         with open(path) as f:
             params = json.load(f)
 
-        self.dtype = params["dtype"]
-        self.header = params["header"]
-        self.width = params["width"]
-        self.height = params["height"]
-        self.cmap = params["cmap"]
-        self.last_dir = params["last_dir"]
+        self.from_parameters(params)
+        return self
 
     def to_config(self, path):
         with open(path, "w") as f:
             json.dump(self.__dict__, f, indent=4)
+
+    def from_parameters(self, params):
+        self.dtype = params.get("dtype", self.dtype)
+        self.header = params.get("header", self.header)
+        self.width = params.get("width", self.width)
+        self.height = params.get("height", self.height)
+        self.cmap = params.get("cmap", self.cmap)
+        self.last_dir = params.get("last_dir", self.last_dir)
+        self.flip_ud = params.get("flip_ud", self.flip_ud)
+        self.flip_lr = params.get("flip_lr", self.flip_lr)
+        self.apply_queue = params.get("apply_queue", self.apply_queue)
+        self.ca = params.get("ca", self.ca)
+        self.cb = params.get("cb", self.cb)
+        return self
+
+    def get(self, parameter, *_):
+        return getattr(self, parameter)
 
