@@ -71,7 +71,7 @@ class VisPyCanvas(QWidget):
         self.image_data = image
         self.image.set_data(self.image_data)
         f = 0
-        self.selection_changed.emit(((0+f, self.image_data.shape[1]-f), (self.image_data.shape[0]-f, 0+f)))
+        self.selection_changed.emit(((0 + f, self.image_data.shape[1] - f), (self.image_data.shape[0] - f, 0 + f)))
         self.canvas.update()
 
     def update_limits(self, limits):
@@ -184,6 +184,8 @@ class VisPyCanvas(QWidget):
         self.rect.height = 1
 
     def _on_mouse_press(self, event):
+        if self.image_data.shape[0] < 2:
+            return
         if event.button == 1 and not self.doubleclick_timer.isActive():
             self.doubleclick_timer.start()
             self._drag_start_delayed = event.pos
@@ -209,8 +211,15 @@ class VisPyCanvas(QWidget):
         self._drag_start = None
         self.rect.visible = False
 
+    def _save_render(self):
+        self.canvas.size = self.image_data.shape[1], self.image_data.shape[0]
+        arr = self.canvas.render(region=(0, 0, *self.image_data.shape))
+        self.set_camera_range(((0, self.image_data.shape[1]), (self.image_data.shape[0], 0)))
+        self.save_image.emit(("render", arr))
+
     def _show_context_menu(self, event):
         menu = QMenu(self.canvas.native)
+        menu.addAction("Save render (tiff)", self._save_render)
         menu.addAction("Save image (tiff)", lambda: self.save_image.emit(("tiff", False)))
         menu.addAction("Save image (bin)", lambda: self.save_image.emit(("bin", False)))
         menu.addAction("Save all images (tiff)", lambda: self.save_image.emit(("tiff", True)))

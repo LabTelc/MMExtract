@@ -84,9 +84,10 @@ class WorkerThread(QThread):
 
             return filepath, arr
 
-        if ftype == "tiff":
+        if ftype == "tiff" or ftype == "render":
             filepath = filepath if filepath.endswith('.tiff') or filepath.endswith('.tif') else filepath + '.tiff'
-            filepath, arr = prep_arr(filepath, arr)
+            if ftype == "tiff":
+                filepath, arr = prep_arr(filepath, arr)
             tifffile.imwrite(filepath, arr)
         else:
             filepath = filepath if filepath.endswith('.bin') else filepath + '.bin'
