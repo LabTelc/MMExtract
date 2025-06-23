@@ -40,8 +40,7 @@ class MMExtract(QMainWindow, UI_MainWindow):
                 lambda value, l=letter: getattr(self, f"dsb_lower_{l}").setValue(value))
             getattr(self, f"range_slider_{letter}").upperValueChanged.connect(
                 lambda value, l=letter: getattr(self, f"dsb_upper_{l}").setValue(value))
-            getattr(self, f"cb_colormaps_{letter}").currentTextChanged.connect(
-                lambda value, l=letter: getattr(self, f"canvas_{l}").set_cmap(value))
+            getattr(self, f"cb_colormaps_{letter}").currentTextChanged.connect(self._handle_cmap_changed)
             getattr(self, f"canvas_{letter}").selection_changed.connect(self._handle_selection_changed)
             getattr(self, f"canvas_{letter}").save_image.connect(self._save_image_handler)
             getattr(self, f"canvas_{letter}").open_window.connect(self._window_handler)
@@ -128,6 +127,12 @@ class MMExtract(QMainWindow, UI_MainWindow):
         getattr(self, f"cb_auto_range_{letter}").setCurrentIndex(0)
         if letter in self.windows: self.windows[letter].show_image(img)
 
+    def _handle_cmap_changed(self):
+        letter = self.sender().objectName()[-1]
+        value = getattr(self, f"cb_colormaps_{letter}").currentText()
+        getattr(self, f"canvas_{letter}").set_cmap(value)
+        if letter in self.windows: self.windows[letter].set_cmap(value)
+
     def _get_current_image(self, letter):
         if getattr(self, f"cb_files_{letter}").count() == 0:
             return None
@@ -209,15 +214,24 @@ class MMExtract(QMainWindow, UI_MainWindow):
     def _save_image_handler(self, args):
         ftype, many = args
         letter = self.sender().objectName()[-1]
-        dialog = FileSaveDialog(self)
-        if dialog.exec_():
-            dtype = dialog.result["dtype"]
-            normalize = dialog.result["normalize"]
-            filter_ = "TIFF (*.tiff)" if ftype == "tiff" else "Binary (*.bin)"
-            fex = "tif" if ftype == "tiff" else "bin"
-        else:
-            return
-        if not many:
+        filter_ = "TIFF (*.tiff)" if (ftype == "tiff" or ftype == "render") else "Binary (*.bin)"
+        fex = "tif" if ftype == "tiff" else "bin"
+        dtype, normalize = "uint8", False
+        if not ftype == "render":
+            dialog = FileSaveDialog(self)
+            if dialog.exec_():
+                dtype = dialog.result["dtype"]
+                normalize = dialog.result["normalize"]
+            else:
+                return
+        if ftype == "render":
+            filename, _ = QFileDialog.getSaveFileName(self, "Save image...", self.parameters.last_dir, filter_)
+            id_ = getattr(self, f"cb_files_{letter}").currentData()
+            if not filename or id_ is None:
+                return
+            self.working_queue.put((filename, many, (ftype, dtype, normalize)))
+            self.worker_thread.wake()
+        elif not many:
             filename, _ = QFileDialog.getSaveFileName(self, "Save image...", self.parameters.last_dir, filter_)
             id_ = getattr(self, f"cb_files_{letter}").currentData()
             if not filename or id_ is None:
@@ -257,6 +271,7 @@ class MMExtract(QMainWindow, UI_MainWindow):
         canvas.selection_changed.connect(self._handle_selection_changed)
         canvas.save_image.connect(self._save_image_handler)
         canvas.open_window.connect(self._window_handler)
+        canvas.set_cmap(getattr(self, f"cb_colormaps_{letter}").currentText())
         self.windows[letter] = canvas
         canvas.setWindowTitle(f"Image {letter.upper()}")
         canvas.show()

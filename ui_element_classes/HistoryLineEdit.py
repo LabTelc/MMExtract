@@ -15,7 +15,7 @@ class HistoryLineEdit(QLineEdit):
             self.navigate_history(-1)
         elif event.key() == Qt.Key_Down:
             self.navigate_history(1)
-        elif event.key() == Qt.Key_Return:
+        elif event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
             text = self.text()
             self.add_to_history(text)
             self.return_pressed.emit(text)
@@ -33,4 +33,4 @@ class HistoryLineEdit(QLineEdit):
         if text:
             if text != self.history[-1]:
                 self.history.append(text)
-        self.history_index = len(self.history) - 1
+        self.history_index = len(self.history)
