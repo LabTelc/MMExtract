@@ -4,7 +4,6 @@ from PyQt5.QtCore import pyqtSignal, QThread, QMutex, QWaitCondition
 import numpy as np
 from PIL import Image as Image
 import tifffile
-from numpy.lib.twodim_base import fliplr
 
 from .functions import to16bit_uint
 
@@ -66,7 +65,7 @@ class WorkerThread(QThread):
         if params.get("flip_ud"):
             arr = np.flipud(arr)
         if params.get("flip_lr"):
-            arr = fliplr(arr)
+            arr = np.fliplr(arr)
         return arr
 
     @staticmethod

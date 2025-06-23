@@ -1,2 +1,2 @@
-call conda activate MMExtract
+call conda activate LEAP
 start pythonw MMExtract.py
