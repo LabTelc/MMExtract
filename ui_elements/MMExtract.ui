@@ -20,6 +20,16 @@
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_6">
         <item>
+         <widget class="QToolButton" name="tb_move_b">
+          <property name="toolTip">
+           <string>Move the image...</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QComboBox" name="cb_files_b"/>
         </item>
         <item>
@@ -263,14 +273,14 @@
            </property>
           </widget>
          </item>
-         <item row="3" column="0">
+         <item row="4" column="0">
           <widget class="QLabel" name="label_11">
            <property name="text">
             <string>Lower:</string>
            </property>
           </widget>
          </item>
-         <item row="3" column="1">
+         <item row="4" column="1">
           <widget class="QDoubleSpinBox" name="dsb_lower_r">
            <property name="maximumSize">
             <size>
@@ -289,14 +299,14 @@
            </property>
           </widget>
          </item>
-         <item row="4" column="0">
+         <item row="5" column="0">
           <widget class="QLabel" name="label_12">
            <property name="text">
             <string>Upper:</string>
            </property>
           </widget>
          </item>
-         <item row="4" column="1">
+         <item row="5" column="1">
           <widget class="QDoubleSpinBox" name="dsb_upper_r">
            <property name="maximumSize">
             <size>
@@ -315,18 +325,32 @@
            </property>
           </widget>
          </item>
-         <item row="5" column="0">
+         <item row="6" column="0">
           <widget class="QLabel" name="label_13">
            <property name="text">
             <string>Autorange:</string>
            </property>
           </widget>
          </item>
-         <item row="5" column="1">
+         <item row="6" column="1">
           <widget class="QComboBox" name="cb_auto_range_r"/>
          </item>
          <item row="2" column="0" colspan="2">
           <widget class="QRangeSlider" name="range_slider_r" native="true"/>
+         </item>
+         <item row="7" column="1">
+          <widget class="QCheckBox" name="cb_lock_limits_r">
+           <property name="text">
+            <string/>
+           </property>
+          </widget>
+         </item>
+         <item row="7" column="0">
+          <widget class="QLabel" name="label_7">
+           <property name="text">
+            <string>Lock limits:</string>
+           </property>
+          </widget>
          </item>
         </layout>
        </widget>
@@ -367,6 +391,16 @@
      <layout class="QVBoxLayout" name="verticalLayout_4">
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_3">
+        <item>
+         <widget class="QToolButton" name="tb_move_a">
+          <property name="toolTip">
+           <string>Move the image...</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
         <item>
          <widget class="QComboBox" name="cb_files_a"/>
         </item>

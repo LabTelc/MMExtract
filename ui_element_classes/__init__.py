@@ -5,3 +5,4 @@ from .QRangeSlider import QRangeSlider
 from .VisPyCanvas import VisPyCanvas
 from .FileSaveDialog import FileSaveDialog
 from .BatchDialog import BatchDialog
+from .MoverWidget import MoverWidget

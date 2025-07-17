@@ -10,6 +10,8 @@ supportedLoadDataTypes = ['int8', 'int16', 'int32', 'int64',
 
 supportedSaveDataTypes = ["uint16", "float32"]
 
+open_fex = ["jpg", "jpeg", "tif", "tiff", "png", "txt"]
+
 limits_list = ["min - max",
                "5 - 95",
                "1 - 99",

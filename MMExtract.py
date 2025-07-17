@@ -8,11 +8,12 @@ from PyQt5.QtWidgets import QApplication, QFileDialog, QDialog
 from PyQt5.QtGui import QIcon, QTextCursor, QColor
 from PyQt5.uic import loadUiType
 
-from ui_element_classes import FileInfoDialog, VisPyCanvas, FileSaveDialog, BatchDialog
+from ui_element_classes import FileInfoDialog, VisPyCanvas, FileSaveDialog, BatchDialog, MoverWidget
 from utils import *
 
 UI_MainWindow, QMainWindow = loadUiType('./ui_elements/MMExtract.ui')
 icon_path = './ui_elements/icon_128x.png'
+move_path = './ui_elements/move.svg'
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
@@ -24,6 +25,7 @@ class MMExtract(QMainWindow, UI_MainWindow):
         self.setWindowIcon(QIcon(icon_path))
         self.id_gen = id_generator()
         self.images = {}
+        self.moves = {}
 
         self.parameters = Parameters().from_config("utils/config.json")
         self.working_queue = Queue()
@@ -34,7 +36,7 @@ class MMExtract(QMainWindow, UI_MainWindow):
         for letter in ["a", "b", "r"]:
             getattr(self, f"cb_colormaps_{letter}").addItems(cmaps_list_small)
             getattr(self, f"cb_auto_range_{letter}").addItems(limits_list)
-            getattr(self, f"cb_auto_range_{letter}").currentIndexChanged.connect(
+            getattr(self, f"cb_auto_range_{letter}").activated.connect(
                 lambda index, l=letter: self._handle_auto_limits(index, l))
             getattr(self, f"range_slider_{letter}").lowerValueChanged.connect(
                 lambda value, l=letter: getattr(self, f"dsb_lower_{l}").setValue(value))
@@ -44,7 +46,7 @@ class MMExtract(QMainWindow, UI_MainWindow):
             getattr(self, f"canvas_{letter}").selection_changed.connect(self._handle_selection_changed)
             getattr(self, f"canvas_{letter}").save_image.connect(self._save_image_handler)
             getattr(self, f"canvas_{letter}").open_window.connect(self._window_handler)
-            getattr(self, f"cb_files_{letter}").currentIndexChanged.connect(self._handle_file_changed)
+            getattr(self, f"cb_files_{letter}").activated.connect(self._handle_file_changed)
             getattr(self, f"dsb_lower_{letter}").valueChanged.connect(
                 lambda value, l=letter: self._handle_dsb_limits(value, l, "lower"))
             getattr(self, f"dsb_upper_{letter}").valueChanged.connect(
@@ -60,6 +62,8 @@ class MMExtract(QMainWindow, UI_MainWindow):
                 getattr(self, f"dsb_c_{letter}").valueChanged.connect(self._handle_command)
                 getattr(self, f"dsb_c_{letter}").valueChanged.connect(
                     lambda value, l=letter: self._handle_dsb_c(value, l))
+                getattr(self, f"tb_move_{letter}").setIcon(QIcon(move_path))
+                getattr(self, f"tb_move_{letter}").clicked.connect(self._handle_open_mover)
 
         self.le_command.return_pressed.connect(self._handle_command)
         self.last_command = ""
@@ -72,7 +76,8 @@ class MMExtract(QMainWindow, UI_MainWindow):
         skip = False
 
         for filepath in filepaths:
-            if not skip:
+            fex = filepath.split(".")[-1]
+            if not fex in open_fex and not skip:
                 dialog = FileInfoDialog(self, self.parameters)
                 if dialog.exec_() == QDialog.Accepted:
                     self.parameters = self.parameters.from_parameters(dialog.result)
@@ -105,6 +110,8 @@ class MMExtract(QMainWindow, UI_MainWindow):
         getattr(self, f"cb_files_{letter}").addItem(filename, userData=im_id)
         getattr(self, f"cb_files_{letter}").setItemData(getattr(self, f"cb_files_{letter}").count() - 1, filepath,
                                                         Qt.ToolTipRole)
+        getattr(self, f"cb_files_{letter}").setCurrentIndex(getattr(self, f"cb_files_{letter}").count() - 1)
+        self._handle_file_changed(letter)
 
     def _handle_selection_changed(self, limits):
         for l in ["a", "b", "r"]:
@@ -117,15 +124,17 @@ class MMExtract(QMainWindow, UI_MainWindow):
                 m = np.mean(self.images[id_][x_min:x_max, y_min:y_max])
                 getattr(self, f"l_mean_{l}").setText(f"{m:.3f}")
 
-    def _handle_file_changed(self):
-        letter = self.sender().objectName()[-1]
+    def _handle_file_changed(self, *args):
+        letter = self.sender().objectName()[-1] if isinstance(args[0], int) else args[0]
         img = self._get_current_image(letter)
         if img is None: return
         getattr(self, f"canvas_{letter}").show_image(img)
         getattr(self, f"range_slider_{letter}").setRange(*limits_dict_function[0](img))
-        getattr(self, f"cb_auto_range_{letter}").setCurrentIndex(1)
-        getattr(self, f"cb_auto_range_{letter}").setCurrentIndex(0)
+        idx = getattr(self, f"cb_auto_range_{letter}").currentIndex()
+        self._handle_auto_limits(idx, letter)
         if letter in self.windows: self.windows[letter].show_image(img)
+        im_id = getattr(self, f"cb_files_{letter}").currentData()
+        if f"mover_{letter}" in self.windows: self.windows[f"mover_{letter}"].set_abs(self.moves.get(im_id, (0, 0)))
 
     def _handle_cmap_changed(self):
         letter = self.sender().objectName()[-1]
@@ -202,11 +211,14 @@ class MMExtract(QMainWindow, UI_MainWindow):
                 self.images[id_r] = result
                 self.canvas_r.show_image(result)
                 if "r" in self.windows: self.windows["r"].show_image(result)
+                if not self.cb_lock_limits_r.isChecked():
+                    self._handle_file_changed("r")
             else:
                 im_id = next(self.id_gen)
                 self.images[im_id] = result
                 self.cb_files_r.addItem(self.last_command, userData=im_id)
                 self.cb_files_r.setCurrentIndex(self.cb_files_r.count() - 1)
+                self._handle_file_changed("r")
         else:
             self.log(f"Result is not an array\n{result}", color="red")
             return
@@ -267,7 +279,7 @@ class MMExtract(QMainWindow, UI_MainWindow):
     def _window_handler(self):
         letter = self.sender().objectName()[-1]
         if letter in self.windows: return
-        canvas = VisPyCanvas(size=(2000,2000))
+        canvas = VisPyCanvas(size=(2000, 2000))
         canvas.selection_changed.connect(self._handle_selection_changed)
         canvas.save_image.connect(self._save_image_handler)
         canvas.open_window.connect(self._window_handler)
@@ -278,6 +290,31 @@ class MMExtract(QMainWindow, UI_MainWindow):
         canvas.closed_window.connect(lambda: self.windows.pop(letter, None))
         img = self._get_current_image(letter)
         if img is not None: canvas.show_image(img)
+
+    def _handle_open_mover(self):
+        sender = self.sender().objectName().split("_")[-1]
+        im_id = getattr(self, f"cb_files_{sender}").currentData()
+        xy_abs = self.moves.get(im_id, (0, 0))
+        name = f"mover_{sender}"
+        if not name in self.windows:
+            dialog = MoverWidget(self, sender, xy_abs)
+            self.windows[name] = dialog
+            dialog.move_image.connect(self.move_handler)
+            dialog.show()
+            dialog.closed_window.connect(lambda: self.windows.pop(name, None))
+
+    def move_handler(self, args):
+        letter, x, y, x_abs, y_abs = args
+        im_id = getattr(self, f"cb_files_{letter}").currentData()
+        self.moves[im_id] = (x_abs, y_abs)
+        image = self._get_current_image(letter)
+        if image is None or not isinstance(image, np.ndarray):
+            self.log(f"Tried to move image {im_id} but it is not an image.", "red")
+            return
+        image = np.concatenate([image[x:], image[:x]])
+        image = np.concatenate([image[:, y:], image[:, :y]], axis=1)
+        self.images[im_id] = image
+        getattr(self, f"canvas_{letter}").show_image(image)
 
     def batch_processing(self):
         dialog = BatchDialog(self, self.parameters, self.last_command)

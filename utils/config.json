@@ -1,13 +1,13 @@
 {
     "dtype": "uint16",
     "header": 0,
-    "width": 2048,
-    "height": 2048,
+    "width": 4096,
+    "height": 4096,
     "cmap": "gray",
-    "last_dir": "D:/TinyBro/After_alignment",
+    "last_dir": "C:/Users/vilif/PycharmProjects/MMExtract",
     "flip_ud": true,
     "flip_lr": false,
-    "apply_queue": false,
+    "apply_queue": true,
     "ca": 1.0,
     "cb": 1.0
 }
