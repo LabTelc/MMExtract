@@ -6,7 +6,7 @@ Ui_FileSaveDialog, QDialog = loadUiType('./ui_elements/FileSaveDialog.ui')
 
 
 class FileSaveDialog(QDialog, Ui_FileSaveDialog):
-    def __init__(self, parent=None, parameters=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
         self.setWindowTitle("Choose dtype...")

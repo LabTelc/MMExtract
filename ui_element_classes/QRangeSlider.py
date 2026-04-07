@@ -1,6 +1,6 @@
 from PyQt5.QtCore import Qt, QRect, pyqtSignal
 from PyQt5.QtGui import QPainter, QPalette
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QWidget, QToolTip
 
 
 class QRangeSlider(QWidget):
@@ -111,7 +111,8 @@ class QRangeSlider(QWidget):
         if self._active_slider is not None:
             pos = event.pos().x()
             value = self._min + (self._max - self._min) * pos / self.rect().width()
-
+            if self._min <= value <= self._max:
+                QToolTip.showText(event.globalPos(), f"{value:.5g}")
             if self._active_slider == "lower":
                 self.setLowerValue(value)
             elif self._active_slider == "upper":
@@ -133,3 +134,15 @@ class QRangeSlider(QWidget):
         elif upper_handle_rect.contains(pos):
             return "upper"
         return None
+
+    def minimum(self):
+        return self._min
+
+    def maximum(self):
+        return self._max
+
+    def setMinimum(self, value):
+        self._min = value
+
+    def setMaximum(self, value):
+        self._max = value

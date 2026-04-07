@@ -47,10 +47,10 @@ class MMExtract(QMainWindow, UI_MainWindow):
             getattr(self, f"canvas_{letter}").save_image.connect(self._save_image_handler)
             getattr(self, f"canvas_{letter}").open_window.connect(self._window_handler)
             getattr(self, f"cb_files_{letter}").activated.connect(self._handle_file_changed)
-            getattr(self, f"dsb_lower_{letter}").valueChanged.connect(
-                lambda value, l=letter: self._handle_dsb_limits(value, l, "lower"))
-            getattr(self, f"dsb_upper_{letter}").valueChanged.connect(
-                lambda value, l=letter: self._handle_dsb_limits(value, l, "upper"))
+            getattr(self, f"dsb_lower_{letter}").editingFinished.connect(
+                lambda l=letter: self._handle_dsb_limits(None, l, "lower"))
+            getattr(self, f"dsb_upper_{letter}").editingFinished.connect(
+                lambda l=letter: self._handle_dsb_limits(None, l, "upper"))
             if letter != "r":
                 getattr(self, f"s_c_{letter}").floatValueChanged.connect(
                     lambda value, l=letter: getattr(self, f"dsb_c_{l}").setValue(value))
@@ -121,18 +121,28 @@ class MMExtract(QMainWindow, UI_MainWindow):
             (x_min, x_max), (y_max, y_min) = np.uint16(limits)
             id_ = getattr(self, f"cb_files_{l}").currentData()
             if id_ is not None:
-                m = np.mean(self.images[id_][x_min:x_max, y_min:y_max])
-                getattr(self, f"l_mean_{l}").setText(f"{m:.3f}")
+                img = self.images[id_][x_min:x_max, y_min:y_max]
+                if img.shape[0] > 0 and img.shape[1] > 0:
+                    mean = np.mean(img)
+                    min_ = np.min(img)
+                    max_ = np.max(img)
+                else:
+                    min_, mean, max_ = 0,0,0
+                getattr(self, f"l_mean_{l}").setText(f"{mean:.5g}")
+                getattr(self, f"l_min_{l}").setText(f"{min_:.5g}")
+                getattr(self, f"l_max_{l}").setText(f"{max_:.5g}")
 
-    def _handle_file_changed(self, *args):
+    def _handle_file_changed(self, *args, reset_zoom=True):
         letter = self.sender().objectName()[-1] if isinstance(args[0], int) else args[0]
         img = self._get_current_image(letter)
         if img is None: return
-        getattr(self, f"canvas_{letter}").show_image(img)
+        getattr(self, f"canvas_{letter}").show_image(img, reset_zoom=reset_zoom)
         getattr(self, f"range_slider_{letter}").setRange(*limits_dict_function[0](img))
         idx = getattr(self, f"cb_auto_range_{letter}").currentIndex()
         self._handle_auto_limits(idx, letter)
-        if letter in self.windows: self.windows[letter].show_image(img)
+        if letter in self.windows: self.windows[letter].show_image(img, reset_zoom=reset_zoom)
+        if reset_zoom:
+            self._handle_selection_changed(((0, img.shape[1]), (img.shape[0], 0)))
         im_id = getattr(self, f"cb_files_{letter}").currentData()
         if f"mover_{letter}" in self.windows: self.windows[f"mover_{letter}"].set_abs(self.moves.get(im_id, (0, 0)))
 
@@ -156,30 +166,37 @@ class MMExtract(QMainWindow, UI_MainWindow):
         if id_ is None:
             return
         vmin, vmax = limits_dict_function[index](self.images[id_])
+        if index == 0:
+            getattr(self, f"range_slider_{letter}").setRange(vmin, vmax)
         getattr(self, f"canvas_{letter}").update_limits((vmin, vmax))
         if letter in self.windows: self.windows[letter].update_limits((vmin, vmax))
         getattr(self, f"range_slider_{letter}").setLowerValue(vmin)
         getattr(self, f"range_slider_{letter}").setUpperValue(vmax)
 
     def _handle_dsb_limits(self, value, letter, side):
+        if value is None:
+            value = getattr(self, f"dsb_{side}_{letter}").value()
         r_slider = getattr(self, f"range_slider_{letter}")
-        glimits = r_slider.lowerValue(), r_slider.upperValue()
-        if glimits[0] <= value <= glimits[1]:
-            r_slider.blockSignals(True)
-            if side == "lower":
-                getattr(self, f"canvas_{letter}").set_vmin(value)
-                if letter in self.windows: self.windows[letter].set_vmin(value)
-                r_slider.setLowerValue(value)
-            else:
-                getattr(self, f"canvas_{letter}").set_vmax(value)
-                if letter in self.windows: self.windows[letter].set_vmax(value)
-                r_slider.setUpperValue(value)
-            r_slider.blockSignals(False)
+        r_slider.blockSignals(True)
+        if side == "lower":
+            if value > getattr(self, f"dsb_upper_{letter}").value():
+                value = getattr(self, f"dsb_upper_{letter}").value()
+                getattr(self, f"dsb_lower_{letter}").setValue(value)
+            getattr(self, f"canvas_{letter}").set_vmin(value)
+            if letter in self.windows: self.windows[letter].set_vmin(value)
+            if value < r_slider.minimum():
+                r_slider.setMinimum(value)
+            r_slider.setLowerValue(value)
         else:
-            if side == "lower":
-                getattr(self, f"dsb_lower_{letter}").setValue(glimits[0])
-            else:
-                getattr(self, f"dsb_upper_{letter}").setValue(glimits[1])
+            if value < getattr(self, f"dsb_lower_{letter}").value():
+                value = getattr(self, f"dsb_lower_{letter}").value()
+                getattr(self, f"dsb_upper_{letter}").setValue(value)
+            getattr(self, f"canvas_{letter}").set_vmax(value)
+            if letter in self.windows: self.windows[letter].set_vmax(value)
+            if value > r_slider.maximum():
+                r_slider.setMaximum(value)
+            r_slider.setUpperValue(value)
+        r_slider.blockSignals(False)
 
     def _handle_command(self):
         sender = self.sender().objectName()
@@ -209,10 +226,10 @@ class MMExtract(QMainWindow, UI_MainWindow):
                 if id_r is None:
                     return
                 self.images[id_r] = result
-                self.canvas_r.show_image(result)
-                if "r" in self.windows: self.windows["r"].show_image(result)
+                self.canvas_r.show_image(result, False)
+                if "r" in self.windows: self.windows["r"].show_image(result, reset_zoom=False)
                 if not self.cb_lock_limits_r.isChecked():
-                    self._handle_file_changed("r")
+                    self._handle_file_changed("r", reset_zoom=False)
             else:
                 im_id = next(self.id_gen)
                 self.images[im_id] = result
@@ -290,6 +307,7 @@ class MMExtract(QMainWindow, UI_MainWindow):
         canvas.closed_window.connect(lambda: self.windows.pop(letter, None))
         img = self._get_current_image(letter)
         if img is not None: canvas.show_image(img)
+        if img is not None: canvas.update_limits(getattr(self, f"canvas_{letter}").image.clim)
 
     def _handle_open_mover(self):
         sender = self.sender().objectName().split("_")[-1]

@@ -16,7 +16,7 @@ class VisPyCanvas(QWidget):
     open_window = pyqtSignal(name='open window')
     closed_window = pyqtSignal(name='close window')
 
-    def __init__(self, parent=None, size=(800, 600)):
+    def __init__(self, parent=None, size=(1600, 1200)):
         """
         Wrapper for VisPy canvas for controlled usage in PyQt app
         :param parent: parent QWidget
@@ -49,7 +49,7 @@ class VisPyCanvas(QWidget):
         self.label_timer = QTimer(self)
         self.label_timer.timeout.connect(self._hide_label)
         self.label_timer.setSingleShot(True)
-        self.label_timer.setInterval(1_000)
+        self.label_timer.setInterval(100)
         # Vispy
         self.grid = self.canvas.central_widget.add_grid()
         self.im_view = self.grid.add_view(row=0, col=0, row_span=9, camera=CustomPanZoomCamera(aspect=1))
@@ -67,10 +67,11 @@ class VisPyCanvas(QWidget):
         self.im_view.camera.flip = (0, 1)
         self.cbar_view.camera.set_range()
 
-    def show_image(self, image: np.ndarray):
+    def show_image(self, image: np.ndarray, reset_zoom=True):
         """
         Set data of the image visual
         :param image: numpy 2D array of image data
+        :param reset_zoom: Reset the view zoom
         """
         if not self.image.visible:
             self.image.visible = True
@@ -78,7 +79,8 @@ class VisPyCanvas(QWidget):
             self._resize_cbar()
         self.image_data = np.float32(image)
         self.image.set_data(self.image_data)
-        self.selection_changed.emit(((0, self.image_data.shape[1]), (self.image_data.shape[0], 0)))
+        if reset_zoom:
+            self.set_camera_range(((0, self.image_data.shape[1]), (self.image_data.shape[0], 0)))
         self.canvas.update()
 
 
@@ -161,8 +163,11 @@ class VisPyCanvas(QWidget):
             self.selection_changed.emit(((0, self.image_data.shape[1]), (self.image_data.shape[0], 0)))
 
     def _hide_label(self):
-        self.label.setText("")
-        self.label_timer.stop()
+        if self.canvas.native.underMouse():
+            self.label_timer.start()
+        else:
+            self.label.setText("")
+            self.label_timer.stop()
 
     def _on_mouse_move(self, event):
         pos = self._canvas2image_coord(event.pos)

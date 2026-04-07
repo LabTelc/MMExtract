@@ -8,7 +8,7 @@ supportedLoadDataTypes = ['int8', 'int16', 'int32', 'int64',
                       'uint8', 'uint16', 'uint32', 'uint64',
                       'float8', 'float16', 'float32', 'float64']
 
-supportedSaveDataTypes = ["uint16", "float32"]
+supportedSaveDataTypes = ["uint16", "float32", "float64"]
 
 open_fex = ["jpg", "jpeg", "tif", "tiff", "png", "txt"]
 
