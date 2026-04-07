@@ -61,7 +61,7 @@ class WorkerThread(QThread):
             print(f"Error reading file {filepath}: {e}")
             return None
         else:
-            arr = np.float32(arr)
+            arr = np.float64(arr)
         if params.get("flip_ud"):
             arr = np.flipud(arr)
         if params.get("flip_lr"):

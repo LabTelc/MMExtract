@@ -7,6 +7,7 @@ from vispy.scene import SceneCanvas
 from vispy.scene.visuals import Image, Rectangle
 
 from utils import CustomPanZoomCamera
+from utils.vispy import TickedColorBar
 
 
 class VisPyCanvas(QWidget):
@@ -49,17 +50,22 @@ class VisPyCanvas(QWidget):
         self.label_timer.timeout.connect(self._hide_label)
         self.label_timer.setSingleShot(True)
         self.label_timer.setInterval(1_000)
-        # VisPy
-        self.view = self.canvas.central_widget.add_view()
-        self.image = Image(cmap="gray", parent=self.view.scene)
+        # Vispy
+        self.grid = self.canvas.central_widget.add_grid()
+        self.im_view = self.grid.add_view(row=0, col=0, row_span=9, camera=CustomPanZoomCamera(aspect=1))
+        self.cbar_view = self.grid.add_view(row=9, col=0)
+        self.cbar = TickedColorBar(parent=self.cbar_view, cmap="gray", orientation="bottom", border_width=1,
+                                   size=(300, 10), pos=(150,0))
+        self.cbar.visible = False
+        self.image = Image(cmap="gray", parent=self.im_view.scene)
         self.image_data = np.array([[0]], np.float32)
         self.image.set_data(self.image_data)
         self.image.visible = False
         self.rect = Rectangle(center=(0, 0), width=1, height=1, color=(1, 0, 0, .01), border_color=(1, 0, 0, .75),
-                              parent=self.view, border_width=2)
+                              parent=self.im_view, border_width=2)
         self.rect.visible = False
-        self.view.camera = CustomPanZoomCamera(aspect=1)
-        self.view.camera.flip = (0, 1)
+        self.im_view.camera.flip = (0, 1)
+        self.cbar_view.camera.set_range()
 
     def show_image(self, image: np.ndarray):
         """
@@ -68,11 +74,13 @@ class VisPyCanvas(QWidget):
         """
         if not self.image.visible:
             self.image.visible = True
-        self.image_data = image
+            self.cbar.visible = True
+            self._resize_cbar()
+        self.image_data = np.float32(image)
         self.image.set_data(self.image_data)
-        f = 0
-        self.selection_changed.emit(((0 + f, self.image_data.shape[1] - f), (self.image_data.shape[0] - f, 0 + f)))
+        self.selection_changed.emit(((0, self.image_data.shape[1]), (self.image_data.shape[0], 0)))
         self.canvas.update()
+
 
     def update_limits(self, limits):
         """
@@ -80,6 +88,7 @@ class VisPyCanvas(QWidget):
         :param limits: tuple (vmin, vmax)
         """
         self.image.clim = limits
+        self.cbar.clim = limits
 
     def set_vmin(self, vmin):
         """
@@ -87,6 +96,8 @@ class VisPyCanvas(QWidget):
         :param vmin: Value of lower limit
         """
         self.image.clim = vmin, self.image.clim[1]
+        self.cbar.clim =  vmin, self.image.clim[1]
+
 
     def set_vmax(self, vmax):
         """
@@ -94,6 +105,7 @@ class VisPyCanvas(QWidget):
         :param vmax: Value of upper limit
         """
         self.image.clim = self.image.clim[0], vmax
+        self.cbar.clim =  self.image.clim[0], vmax
 
     def set_cmap(self, cmap):
         """
@@ -101,13 +113,17 @@ class VisPyCanvas(QWidget):
         :param cmap: Colormap name or object
         """
         self.image.cmap = cmap
+        self.cbar.cmap =  cmap
+        clim = self.cbar.clim
+        self.cbar.clim = (0, 1)
+        self.cbar.clim = clim
 
     def set_camera_range(self, limits):
         """
         Set camera range
         :param limits: tuple (xmin, xmax), (ymin, ymax)
         """
-        self.view.camera.set_range(x=limits[0], y=limits[1])
+        self.im_view.camera.set_range(x=limits[0], y=limits[1])
 
     def dragEnterEvent(self, event, **kwargs):
         if event.mimeData().hasUrls() and isinstance(self.window(), QMainWindow):
@@ -135,6 +151,11 @@ class VisPyCanvas(QWidget):
         pos_in_img = tr.map(pos)
         return pos_in_img
 
+    def _image2canvas_coord(self, pos):
+        tr = self.canvas.scene.node_transform(self.image)
+        pos_in_canvas = tr.inverse.map(pos)
+        return pos_in_canvas
+
     def _on_key_press(self, event):
         if event.text == "r":
             self.selection_changed.emit(((0, self.image_data.shape[1]), (self.image_data.shape[0], 0)))
@@ -161,8 +182,17 @@ class VisPyCanvas(QWidget):
         start = self._drag_start
         end = event.pos
 
-        x0, y0 = start
-        x1, y1 = end
+        start_img = self._canvas2image_coord(start)
+        end_img = self._canvas2image_coord(end)
+
+        x0 = max(0, min(start_img[0], self.image_data.shape[1]))
+        x1 = max(0, min(end_img[0], self.image_data.shape[1]))
+        y0 = max(0, min(start_img[1], self.image_data.shape[0]))
+        y1 = max(0, min(end_img[1], self.image_data.shape[0]))
+
+        x0, y0 = self._image2canvas_coord((x0, y0))[:2]
+        x1, y1 = self._image2canvas_coord((x1, y1))[:2]
+
         width = max(abs(x1 - x0), 1)
         height = max(abs(y1 - y0), 1)
         center = ((x0 + x1) / 2, (y0 + y1) / 2)
@@ -226,6 +256,14 @@ class VisPyCanvas(QWidget):
         menu.addAction("Save all images (bin)", lambda: self.save_image.emit(("bin", True)))
         menu.exec_(self.canvas.native.mapToGlobal(event.native.pos()))
 
+    def _resize_cbar(self):
+        self.cbar.pos = (self.grid.size[0] / 2, self.grid.size[1] // 25)
+        self.cbar.size = (self.grid.size[0] - self.grid.size[0] / 12, self.grid.size[1] // 25)
+
     def closeEvent(self, event):
         self.closed_window.emit()
         event.accept()
+
+    def resizeEvent(self, a0):
+        super().resizeEvent(a0)
+        self._resize_cbar()
